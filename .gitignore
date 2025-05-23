@@ -1,0 +1,22 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Data
+data/
+
+# Logs
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# archive files
+archive/
+
+# Output folders
+results/

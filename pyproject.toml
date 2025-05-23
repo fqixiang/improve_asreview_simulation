@@ -1,0 +1,13 @@
+[project]
+name = "asreview-sim-env"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "asreview-dory==1.0rc3",
+    "asreview==2.0rc4",
+    "marker-pdf>=1.6.2",
+    "pytest>=8.3.5",
+    "seaborn>=0.13.2",
+]
