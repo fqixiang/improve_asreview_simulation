@@ -15,8 +15,7 @@ This repository contains scripts and resources for running simulations and analy
 
 ## How to Use
 1. **Set Up the Environment**:
-   - Create a virtual environment and activate it.
-   - Install dependencies using the `pyproject.toml` file. We recommend using `uv` with `uv sync`. 
+   - Install environment and dependencies. We recommend using `uv` with `uv sync`. 
 
 2. **Run Simulations**:
    - Use the `run_batch.sh` script to execute batch simulations.
@@ -30,14 +29,6 @@ This repository contains scripts and resources for running simulations and analy
 Ensure the following dependencies are installed:
 - Python 3.10 or higher
 - Required Python packages
-- MPI for parallel processing (ensure `mpirun` is available)
-
-## Troubleshooting
-
-- **Permission Denied**: Ensure scripts have executable permissions.
-- **Missing Dependencies**: Check and install required Python packages.
-- **SLURM Errors**: Verify partition and resource requests in the SLURM script.
 
 ## Contact
-
 For questions or issues, please contact the project maintainer.
