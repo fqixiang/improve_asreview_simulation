@@ -9,7 +9,7 @@ This repository contains scripts and resources for running simulations and analy
 - **src/**: Source code for simulation, tabulation and plotting scripts.
 
 ## Key Files
-- **run_batch.sh**: A script to execute batch simulations, tabulations and plotting. Ensure it has executable permissions (`chmod +x run_batch.sh`) before running.
+- **job.sh**: A script to execute batch simulations, tabulations and plotting. Ensure it has executable permissions (`chmod +x job.sh`) before running.
 - **pyproject.toml**: Configuration file for managing dependencies and project settings.
 - **README.md**: This file, providing an overview of the project.
 
