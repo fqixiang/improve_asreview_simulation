@@ -1,6 +1,6 @@
 # ASReview Simulation
 
-This repository contains scripts and resources for running simulations and analyses using the ASReview library for the IMPROVE project. Several directories are available, each serving a specific purpose.
+This repository contains scripts and resources for running simulations and analyses using the ASReview library for the [IMPROVE](https://doi.org/10.1016/j.csbj.2024.10.026) project. Several directories are available, each serving a specific purpose.
 
 ## Directory Structure
 - **data/**: Includes datasets in `.xlsx` format for various disease topics such as chronic rhinosinusitis and macular degeneration.
@@ -29,6 +29,9 @@ This repository contains scripts and resources for running simulations and analy
 Ensure the following dependencies are installed:
 - Python 3.10 or higher
 - Required Python packages
+
+## Grant
+The IMPROVE project is an Innovative Health Initiative project that has been granted by the European Commission under Grant agreement ID:101132847.
 
 ## Contact
 For questions or issues, please contact the project maintainer.
