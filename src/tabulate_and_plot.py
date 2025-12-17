@@ -12,7 +12,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--benchmark", type=str, default="improve", help="The benchmark to use (improve or synergy)")
     parser.add_argument("--dataset", type=str, default="macular_degeneration", help="The dataset to use")
-    parser.add_argument("--model", type=str, default="elas_u4", help="The model to use")
+    parser.add_argument("--model", type=str, default="elas_u4", help="The ASReview model to use")
     parser.add_argument("--n_pos_priors", type=int, default=1, help="The number of positive priors")
     parser.add_argument("--n_neg_priors", type=int, default=1, help="The number of negative priors")
 

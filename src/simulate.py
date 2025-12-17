@@ -16,8 +16,9 @@ def main():
     parser.add_argument("--n_pos_priors", type=int, default=1, help="The number of positive priors")
     parser.add_argument("--n_neg_priors", type=int, default=1, help="The number of negative priors")
     parser.add_argument("--initial_random_seed", type=int, default=42, help="The initial random seed for reproducibility")
-    parser.add_argument("--model", type=str, default="elas_u4", help="The model to use")
+    parser.add_argument("--model", type=str, default="elas_u4", help="The ASReview model to use")
     parser.add_argument("--n_random_cycles", type=int, default=10, help="The number of random cycles to run")
+    parser.add_argument("--transformer_batch_size", type=int, default=32, help="Batch size for transformer encoding")
     args = parser.parse_args()
     benchmark = args.benchmark
     dataset = args.dataset
@@ -26,6 +27,7 @@ def main():
     initial_seed = args.initial_random_seed
     model = args.model
     n_random_cycles = args.n_random_cycles
+    transformer_batch_size = args.transformer_batch_size
 
     # Check if simulation is already done
     save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
@@ -48,7 +50,7 @@ def main():
     
     X = df[["title", "abstract"]]
     Y = df["label_included"].fillna(0)
-    ids = df["paper_id"]
+    ids = df["openalex_id"]
     total_n_records = len(df)
 
     # Define model configurations   
@@ -60,11 +62,11 @@ def main():
     # Check if embeddings are needed and available for h3 or l2 models
     skip_feature_extraction = False
     if model in ["elas_h3", "elas_l2"]:
-        # Determine embedding file path based on benchmark
+        # Determine embedding file path - store in embeddings directory
         if benchmark == "synergy":
-            embedding_path = f"./data/{benchmark}/{dataset}/{model}_embeddings.parquet"
+            embedding_path = f"./embeddings/{benchmark}/{dataset}/{model}_embeddings.parquet"
         else:  # improve
-            embedding_path = f"./data/{benchmark}/{model}_embeddings.parquet"
+            embedding_path = f"./embeddings/{benchmark}/{model}_embeddings.parquet"
         
         if os.path.exists(embedding_path):
             # Load pre-computed embeddings
@@ -91,7 +93,10 @@ def main():
             texts = (X_text["title"] + " " + X_text["abstract"]).tolist()
             
             # Compute embeddings
-            embeddings = encoder.encode(texts, show_progress_bar=True)
+            embeddings = encoder.encode(texts, 
+                                        batch_size=transformer_batch_size,
+                                        normalize_embeddings=True,
+                                        show_progress_bar=True)
             
             # Save embeddings as parquet
             embeddings_df = pd.DataFrame(embeddings)
