@@ -11,14 +11,16 @@ from utils import model_configurations
 def main():
     # Define the argument parser
     parser = ArgumentParser()
-    parser.add_argument("--topic", type=str, default="macular_degeneration", help="The topic of the dataset")
+    parser.add_argument("--benchmark", type=str, default="improve", help="The benchmark to use (improve or synergy)")
+    parser.add_argument("--dataset", type=str, default="macular_degeneration", help="The dataset to use")
     parser.add_argument("--n_pos_priors", type=int, default=1, help="The number of positive priors")
     parser.add_argument("--n_neg_priors", type=int, default=1, help="The number of negative priors")
     parser.add_argument("--initial_random_seed", type=int, default=42, help="The initial random seed for reproducibility")
     parser.add_argument("--model", type=str, default="elas_u4", help="The model to use")
     parser.add_argument("--n_random_cycles", type=int, default=10, help="The number of random cycles to run")
     args = parser.parse_args()
-    topic = args.topic
+    benchmark = args.benchmark
+    dataset = args.dataset
     n_pos_priors = args.n_pos_priors
     n_neg_priors = args.n_neg_priors
     initial_seed = args.initial_random_seed
@@ -26,7 +28,7 @@ def main():
     n_random_cycles = args.n_random_cycles
 
     # Check if simulation is already done
-    save_folder_path = f"./results/{topic}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
+    save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
     df_results_path = f"{save_folder_path}/{model}_results.csv"
     if os.path.exists(df_results_path):
         print(f"Simulation already done. Results saved in {df_results_path}")
@@ -36,9 +38,14 @@ def main():
     global model_configurations
     valid_models = list(model_configurations.keys())
 
-    # Read the Excel file
-    file_path = f"./data/{topic}.xlsx"
-    df = pd.read_excel(file_path)
+    # Read the data file
+    if benchmark == "synergy":
+        file_path = f"./data/{benchmark}/{dataset}/labels.csv"
+        df = pd.read_csv(file_path)
+    else:  # improve
+        file_path = f"./data/{benchmark}/{dataset}.xlsx"
+        df = pd.read_excel(file_path)
+    
     X = df[["title", "abstract"]]
     Y = df["label_included"].fillna(0)
     ids = df["paper_id"]
@@ -49,6 +56,51 @@ def main():
         model_config = model_configurations[args.model]
     except KeyError:
         raise ValueError(f"Invalid model name. Choose from {valid_models}")
+    
+    # Check if embeddings are needed and available for h3 or l2 models
+    skip_feature_extraction = False
+    if model in ["elas_h3", "elas_l2"]:
+        # Determine embedding file path based on benchmark
+        if benchmark == "synergy":
+            embedding_path = f"./data/{benchmark}/{dataset}/{model}_embeddings.parquet"
+        else:  # improve
+            embedding_path = f"./data/{benchmark}/{model}_embeddings.parquet"
+        
+        if os.path.exists(embedding_path):
+            # Load pre-computed embeddings
+            print(f"Loading pre-computed embeddings from {embedding_path}")
+            embeddings_df = pd.read_parquet(embedding_path)
+            X = embeddings_df
+            skip_feature_extraction = True
+        else:
+            # Compute embeddings and save them
+            print(f"Computing embeddings for {model}. This may take a while...")
+            from sentence_transformers import SentenceTransformer
+            
+            # Select the appropriate model
+            if model == "elas_h3":
+                transformer_model = "mixedbread-ai/mxbai-embed-large-v1"
+            else:  # elas_l2
+                transformer_model = "intfloat/multilingual-e5-large"
+            
+            # Load the sentence transformer model
+            encoder = SentenceTransformer(transformer_model)
+            
+            # Combine title and abstract
+            X_text = df[["title", "abstract"]].fillna("")
+            texts = (X_text["title"] + " " + X_text["abstract"]).tolist()
+            
+            # Compute embeddings
+            embeddings = encoder.encode(texts, show_progress_bar=True)
+            
+            # Save embeddings as parquet
+            embeddings_df = pd.DataFrame(embeddings)
+            os.makedirs(os.path.dirname(embedding_path), exist_ok=True)
+            embeddings_df.to_parquet(embedding_path)
+            print(f"Embeddings saved to {embedding_path}")
+            
+            X = embeddings_df
+            skip_feature_extraction = True
     
     # Set up the active learning cycle
     alc = [
@@ -75,6 +127,7 @@ def main():
             X = X,
             labels=Y,
             cycles=alc,
+            skip_transform=skip_feature_extraction,
         )
 
         simulate.label(priors)

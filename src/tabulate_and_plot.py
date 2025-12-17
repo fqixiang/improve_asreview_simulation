@@ -10,19 +10,21 @@ from utils import pad_labels
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("--topic", type=str, default="macular_degeneration", help="The topic of the dataset")
+    parser.add_argument("--benchmark", type=str, default="improve", help="The benchmark to use (improve or synergy)")
+    parser.add_argument("--dataset", type=str, default="macular_degeneration", help="The dataset to use")
     parser.add_argument("--model", type=str, default="elas_u4", help="The model to use")
     parser.add_argument("--n_pos_priors", type=int, default=1, help="The number of positive priors")
     parser.add_argument("--n_neg_priors", type=int, default=1, help="The number of negative priors")
 
     args = parser.parse_args()
-    topic = args.topic
+    benchmark = args.benchmark
+    dataset = args.dataset
     model = args.model
     n_pos_priors = args.n_pos_priors
     n_neg_priors = args.n_neg_priors
 
     # Read the CSV file
-    df = pd.read_csv(f"./results/{topic}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{model}_results.csv")
+    df = pd.read_csv(f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{model}_results.csv")
 
     # define some variables 
     total_n_records = int(df["total_n_records"].iloc[0])
@@ -72,9 +74,9 @@ def main():
     std_ndcg = np.std(ndcgs_ls)
 
     # make a table with the following columns:
-    # topic, model, n_iterations, average loss, std loss, average ndcg, std ndcg
+    # dataset, model, n_iterations, average loss, std loss, average ndcg, std ndcg
     summary_df = pd.DataFrame({
-        "topic": [topic],
+        "dataset": [dataset],
         "model": [model],
         "n_iterations": [n_iterations],
         "average_loss": [ave_loss],
@@ -86,16 +88,16 @@ def main():
     if os.path.exists(f"./results/simulation_summary.csv"):
         # read the existing summary table
         summary_df_existing = pd.read_csv(f"./results/simulation_summary.csv")
-        # append the new summary table to the existing one if the topic and model are not already in the summary table
-        if not ((summary_df_existing["topic"] == topic) & (summary_df_existing["model"] == model)).any():
+        # append the new summary table to the existing one if the dataset and model are not already in the summary table
+        if not ((summary_df_existing["dataset"] == dataset) & (summary_df_existing["model"] == model)).any():
             # append the new summary table to the existing one
             print("Summary table already exists, appending new results to it.")
             summary_df_existing = pd.concat([summary_df_existing, summary_df], ignore_index=True)
         else:
-            # if the topic and model are already in the summary table, update the existing row with the new values
+            # if the dataset and model are already in the summary table, update the existing row with the new values
             print("Summary table already exists, updating existing results.")
             summary_df_existing.loc[
-                (summary_df_existing["topic"] == topic) & (summary_df_existing["model"] == model),
+                (summary_df_existing["dataset"] == dataset) & (summary_df_existing["model"] == model),
                 ["n_iterations", "average_loss", "std_loss", "average_ndcg", "std_ndcg"]
             ] = [n_iterations, ave_loss, std_loss, ave_ndcg, std_ndcg]
         # save the updated summary table to a csv file
@@ -115,7 +117,7 @@ def main():
     # remove legend
     plt.legend().remove()
     # title text
-    title = f"Recall vs Proportion of Records Screened for '{topic}'"
+    title = f"Recall vs Proportion of Records Screened for '{dataset}'"
     subtitle = f"""With model '{model}', {n_pos_priors} positive prior(s) and {n_neg_priors} negative prior(s),
     {len(seeds)} random sampling cycles (corresponding to differently colored lines).
     All {total_n_relevant_records} remaining relevant records retrieved after screening ~{ave_n_records_needed_for_full_recall} records.
@@ -126,7 +128,7 @@ def main():
     plt.gcf().set_size_inches(10, 9)
 
     # make output folder if it doesn't exist
-    save_folder_path = f"./results/{topic}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
+    save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
     if not os.path.exists(save_folder_path):
         os.makedirs(save_folder_path)
 
