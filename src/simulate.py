@@ -6,7 +6,7 @@ from asreview.models.stoppers import IsFittable
 from argparse import ArgumentParser
 from tqdm import tqdm
 import os
-from utils import model_configurations
+from utils import model_configurations, n_query_extreme
 
 def main():
     # Define the argument parser
@@ -45,7 +45,7 @@ def main():
         file_path = f"./data/{benchmark}/{dataset}/labels.csv"
         df = pd.read_csv(file_path)
     else:  # improve
-        file_path = f"./data/{benchmark}/{dataset}.xlsx"
+        file_path = f"./data/{benchmark}/{dataset}/{dataset}.xlsx"
         df = pd.read_excel(file_path)
     
     X = df[["title", "abstract"]]
@@ -63,10 +63,7 @@ def main():
     skip_feature_extraction = False
     if model in ["elas_h3", "elas_l2"]:
         # Determine embedding file path - store in embeddings directory
-        if benchmark == "synergy":
-            embedding_path = f"./embeddings/{benchmark}/{dataset}/{model}_embeddings.parquet"
-        else:  # improve
-            embedding_path = f"./embeddings/{benchmark}/{model}_embeddings.parquet"
+        embedding_path = f"./embeddings/{benchmark}/{dataset}/{model}_embeddings.parquet"
         
         if os.path.exists(embedding_path):
             # Load pre-computed embeddings
@@ -112,6 +109,7 @@ def main():
         ActiveLearningCycle(
             querier=TopDown(),
             stopper=IsFittable(),
+            n_query=lambda results: n_query_extreme(results, X.shape[0])
         ),
         ActiveLearningCycle.from_meta(model_config),
     ]

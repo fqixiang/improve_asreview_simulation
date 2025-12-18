@@ -48,3 +48,23 @@ model_configurations =  {
 def pad_labels(labels, n_priors, total_n_records):
     """Pad labels to match the dataset size."""
     return labels + [0] * (total_n_records - len(labels) - n_priors)
+
+
+def n_query_extreme(results, n_records):
+    """Determine the number of queries to make based on dataset size and current results."""
+    if n_records >= 10000:
+        if len(results) >= 10000:
+            return 10**5  # finish the run
+        if len(results) >= 1000:
+            return 1000
+        elif len(results) >= 100:
+            return 25
+        else:
+            return 1
+    else:
+        if len(results) >= 1000:
+            return 100
+        elif len(results) >= 100:
+            return 5
+        else:
+            return 1
