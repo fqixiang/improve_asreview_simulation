@@ -15,6 +15,8 @@ def main():
     parser.add_argument("--model", type=str, default="elas_u4", help="The ASReview model to use")
     parser.add_argument("--n_pos_priors", type=int, default=1, help="The number of positive priors")
     parser.add_argument("--n_neg_priors", type=int, default=1, help="The number of negative priors")
+    parser.add_argument("--oa_status", type=str, default=None, choices=[None, "True", "False"], help="Filter by open access status (synergy only): True, False, or None for no filter")
+    parser.add_argument("--abstract_min_length", type=int, default=100, help="Minimum abstract length (words for space-separated languages, characters otherwise)")
 
     args = parser.parse_args()
     benchmark = args.benchmark
@@ -22,9 +24,20 @@ def main():
     model = args.model
     n_pos_priors = args.n_pos_priors
     n_neg_priors = args.n_neg_priors
+    oa_status = args.oa_status
+    abstract_min_length = args.abstract_min_length
+
+    # Determine OA status folder name
+    if oa_status is None:
+        oa_folder = "all"
+    elif oa_status == "True":
+        oa_folder = "open"
+    else:  # "False"
+        oa_folder = "closed"
 
     # Read the CSV file
-    df = pd.read_csv(f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{model}_results.csv")
+    save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{oa_folder}"
+    df = pd.read_csv(f"{save_folder_path}/{model}_abs{abstract_min_length}_results.csv")
 
     # define some variables 
     total_n_records = int(df["total_n_records"].iloc[0])
@@ -127,12 +140,8 @@ def main():
     # set plot size
     plt.gcf().set_size_inches(10, 9)
 
-    # make output folder if it doesn't exist
-    save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
-    if not os.path.exists(save_folder_path):
-        os.makedirs(save_folder_path)
-
-    plt.savefig(f"{save_folder_path}/{model}_recall_vs_proportion.png")
+    # Save plot to the same folder as results
+    plt.savefig(f"{save_folder_path}/{model}_abs{abstract_min_length}_recall_vs_proportion.png")
     # plt.show()
 
 
