@@ -6,7 +6,7 @@ from asreview.models.stoppers import IsFittable
 from argparse import ArgumentParser
 from tqdm import tqdm
 import os
-from utils import model_configurations, n_query_extreme
+from utils import model_configurations, n_query_extreme, get_abstract_length
 
 def main():
     # Define the argument parser
@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--n_random_cycles", type=int, default=10, help="The number of random cycles to run")
     parser.add_argument("--transformer_batch_size", type=int, default=32, help="Batch size for transformer encoding")
     parser.add_argument("--oa_status", type=str, default=None, choices=[None, "True", "False"], help="Filter by open access status (synergy only): True, False, or None for no filter")
+    parser.add_argument("--abstract_min_length", type=int, default=100, help="Minimum abstract length (words for space-separated languages, characters otherwise)")
     args = parser.parse_args()
     benchmark = args.benchmark
     dataset = args.dataset
@@ -30,6 +31,7 @@ def main():
     n_random_cycles = args.n_random_cycles
     transformer_batch_size = args.transformer_batch_size
     oa_status = args.oa_status
+    abstract_min_length = args.abstract_min_length
 
     # Determine OA status folder name
     if oa_status is None:
@@ -41,7 +43,7 @@ def main():
 
     # Check if simulation is already done
     save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{oa_folder}"
-    df_results_path = f"{save_folder_path}/{model}_results.csv"
+    df_results_path = f"{save_folder_path}/{model}_abs{abstract_min_length}_results.csv"
     if os.path.exists(df_results_path):
         print(f"Simulation already done. Results saved in {df_results_path}")
         return
@@ -72,7 +74,7 @@ def main():
     X_full = df_full[["title", "abstract"]]
     
     if model in ["elas_h3", "elas_l2"]:
-        # Determine embedding file path - store in embeddings directory
+        # Determine embedding file path - store in embeddings directory (without filters)
         embedding_path = f"./embeddings/{benchmark}/{dataset}/{model}_embeddings.parquet"
         
         if os.path.exists(embedding_path):
@@ -114,20 +116,28 @@ def main():
             X_full = embeddings_df
             skip_feature_extraction = True
     
-    # Now apply oa_status filter if specified (for synergy benchmark only)
+    # Apply filters: abstract length and oa_status
+    df_full["_abstract_length"] = df_full.apply(get_abstract_length, axis=1)
+    filter_mask = df_full["_abstract_length"] >= abstract_min_length
+    
+    # Apply oa_status filter if specified (for synergy benchmark only)
     if benchmark == "synergy" and oa_status is not None:
         oa_filter = oa_status == "True"
         # Ensure is_open_access is boolean type
         df_full["is_open_access"] = df_full["is_open_access"].astype(bool)
-        # Get indices of filtered records
-        filter_mask = df_full["is_open_access"] == oa_filter
-        df = df_full[filter_mask].reset_index(drop=True)
-        # Select corresponding embeddings/features
-        X = X_full[filter_mask].reset_index(drop=True)
-        print(f"Filtered to {len(df)} records with is_open_access={oa_filter}")
-    else:
-        df = df_full
-        X = X_full
+        # Combine with existing filter mask
+        filter_mask = filter_mask & (df_full["is_open_access"] == oa_filter)
+    
+    # Apply combined filter
+    initial_count = len(df_full)
+    df = df_full[filter_mask].reset_index(drop=True)
+    X = X_full[filter_mask].reset_index(drop=True)
+    filtered_count = len(df)
+    
+    # Clean up temporary column
+    df = df.drop(columns=["_abstract_length"])
+    
+    print(f"Filtered from {initial_count} to {filtered_count} records (abstract_min_length={abstract_min_length}, oa_status={oa_status})")
     
     Y = df["label_included"].fillna(0)
     ids = df["openalex_id"]

@@ -68,3 +68,34 @@ def n_query_extreme(results, n_records):
             return 5
         else:
             return 1
+
+
+def get_abstract_length(row):
+    """Calculate abstract length based on language.
+    
+    For space-separated languages (English, etc.), count words.
+    For non-space languages (Chinese, Japanese, etc.), count characters.
+    
+    Args:
+        row: DataFrame row containing 'abstract' and optionally 'language' columns
+        
+    Returns:
+        int: Length of abstract (word count or character count)
+    """
+    import pandas as pd
+    
+    abstract = str(row.get("abstract", ""))
+    if pd.isna(abstract) or abstract == "nan" or abstract == "":
+        return 0
+    
+    # Check language if available (synergy benchmark)
+    language = row.get("language", "en")
+    # Languages without spaces: Chinese, Japanese, Thai, Korean, Lao, Burmese, Khmer
+    non_space_languages = ["zh", "ja", "th", "ko", "lo", "my", "km"]
+    
+    if language in non_space_languages:
+        # Count characters (excluding whitespace)
+        return len(abstract.replace(" ", ""))
+    else:
+        # Count words (space-separated tokens)
+        return len(abstract.split())
