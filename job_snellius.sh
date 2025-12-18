@@ -17,15 +17,16 @@ module load 2022
 module load CUDA/11.7.0
 source /projects/0/prjs1241/ASReview_Simulation/.venv/bin/activate
 
+benchmark="improve"
 models=("elas_u4" "elas_u3" "elas_l2" "elas_h3")
-topics=("chronic_rhinosinusitis" "macular_degeneration" "multiple_sclerosis" "severe_aortic_stenosis" "atrial_fibrillation" "cervical_cancer" "coronary_artery_disease" "heart_failure" "neck_and_head_cancer" "prostate_cancer")
+datasets=("chronic_rhinosinusitis" "macular_degeneration" "multiple_sclerosis" "severe_aortic_stenosis" "atrial_fibrillation" "cervical_cancer" "coronary_artery_disease" "heart_failure" "neck_and_head_cancer" "prostate_cancer")
 n_neg_priors=11
 
 # Generate all combinations
 tasks=()
 for model in "${models[@]}"; do
-  for topic in "${topics[@]}"; do
-    tasks+=("$model $topic")
+  for dataset in "${datasets[@]}"; do
+    tasks+=("$model $dataset")
   done
 done
 
@@ -35,17 +36,17 @@ running=0
 
 for task in "${tasks[@]}"; do
   model=$(echo $task | awk '{print $1}')
-  topic=$(echo $task | awk '{print $2}')
+  dataset=$(echo $task | awk '{print $2}')
 
-  echo "Launching task for model=$model, topic=$topic"
+  echo "Launching task for benchmark=$benchmark, model=$model, dataset=$dataset"
 
   # Run simulate + plot in sequence within one srun call
   srun --exclusive -N1 -n1 bash -c "
-    echo 'Simulating $model $topic'
-    python ./src/simulate.py --model '$model' --topic '$topic' --n_neg_priors '$n_neg_priors'
+    echo 'Simulating $benchmark $model $dataset'
+    python ./src/simulate.py --benchmark '$benchmark' --model '$model' --dataset '$dataset' --n_neg_priors '$n_neg_priors'
 
-    echo 'Plotting $model $topic'
-    python ./src/tabulate_and_plot.py --model '$model' --topic '$topic' --n_neg_priors '$n_neg_priors'
+    echo 'Plotting $benchmark $model $dataset'
+    python ./src/tabulate_and_plot.py --benchmark '$benchmark' --model '$model' --dataset '$dataset' --n_neg_priors '$n_neg_priors'
   " &
 
   ((running+=1))

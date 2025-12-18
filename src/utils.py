@@ -48,3 +48,54 @@ model_configurations =  {
 def pad_labels(labels, n_priors, total_n_records):
     """Pad labels to match the dataset size."""
     return labels + [0] * (total_n_records - len(labels) - n_priors)
+
+
+def n_query_extreme(results, n_records):
+    """Determine the number of queries to make based on dataset size and current results."""
+    if n_records >= 10000:
+        if len(results) >= 10000:
+            return 10**5  # finish the run
+        if len(results) >= 1000:
+            return 1000
+        elif len(results) >= 100:
+            return 25
+        else:
+            return 1
+    else:
+        if len(results) >= 1000:
+            return 100
+        elif len(results) >= 100:
+            return 5
+        else:
+            return 1
+
+
+def get_abstract_length(row):
+    """Calculate abstract length based on language.
+    
+    For space-separated languages (English, etc.), count words.
+    For non-space languages (Chinese, Japanese, etc.), count characters.
+    
+    Args:
+        row: DataFrame row containing 'abstract' and optionally 'language' columns
+        
+    Returns:
+        int: Length of abstract (word count or character count)
+    """
+    import pandas as pd
+    
+    abstract = str(row.get("abstract", ""))
+    if pd.isna(abstract) or abstract == "nan" or abstract == "":
+        return 0
+    
+    # Check language if available (synergy benchmark)
+    language = row.get("language", "en")
+    # Languages without spaces: Chinese, Japanese, Thai, Korean, Lao, Burmese, Khmer
+    non_space_languages = ["zh", "ja", "th", "ko", "lo", "my", "km"]
+    
+    if language in non_space_languages:
+        # Count characters (excluding whitespace)
+        return len(abstract.replace(" ", ""))
+    else:
+        # Count words (space-separated tokens)
+        return len(abstract.split())
