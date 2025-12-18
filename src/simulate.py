@@ -53,23 +53,14 @@ def main():
     # Read the data file
     if benchmark == "synergy":
         file_path = f"./data/{benchmark}/{dataset}/labels.csv"
-        df = pd.read_csv(file_path)
-        # Filter by open access status if specified
-        if oa_status is not None:
-            oa_filter = oa_status == "True"
-            # Ensure is_open_access is boolean type
-            df["is_open_access"] = df["is_open_access"].astype(bool)
-            df = df[df["is_open_access"] == oa_filter].reset_index(drop=True)
-            print(f"Filtered to {len(df)} records with is_open_access={oa_filter}")
+        df_full = pd.read_csv(file_path)
     else:  # improve
         file_path = f"./data/{benchmark}/{dataset}/{dataset}.xlsx"
-        df = pd.read_excel(file_path)
+        df_full = pd.read_excel(file_path)
     
-    X = df[["title", "abstract"]]
-    Y = df["label_included"].fillna(0)
-    ids = df["openalex_id"]
-    total_n_records = len(df)
-
+    # Store original indices before any filtering
+    df_full = df_full.reset_index(drop=True)
+    
     # Define model configurations   
     try:
         model_config = model_configurations[args.model]
@@ -78,19 +69,21 @@ def main():
     
     # Check if embeddings are needed and available for h3 or l2 models
     skip_feature_extraction = False
+    X_full = df_full[["title", "abstract"]]
+    
     if model in ["elas_h3", "elas_l2"]:
         # Determine embedding file path - store in embeddings directory
         embedding_path = f"./embeddings/{benchmark}/{dataset}/{model}_embeddings.parquet"
         
         if os.path.exists(embedding_path):
-            # Load pre-computed embeddings
+            # Load pre-computed embeddings for all records
             print(f"Loading pre-computed embeddings from {embedding_path}")
             embeddings_df = pd.read_parquet(embedding_path)
-            X = embeddings_df
+            X_full = embeddings_df
             skip_feature_extraction = True
         else:
-            # Compute embeddings and save them
-            print(f"Computing embeddings for {model}. This may take a while...")
+            # Compute embeddings for ALL records and save them
+            print(f"Computing embeddings for {model} for all {len(df_full)} records. This may take a while...")
             from sentence_transformers import SentenceTransformer
             
             # Select the appropriate model
@@ -102,11 +95,11 @@ def main():
             # Load the sentence transformer model
             encoder = SentenceTransformer(transformer_model)
             
-            # Combine title and abstract
-            X_text = df[["title", "abstract"]].fillna("")
+            # Combine title and abstract for ALL records
+            X_text = df_full[["title", "abstract"]].fillna("")
             texts = (X_text["title"] + " " + X_text["abstract"]).tolist()
             
-            # Compute embeddings
+            # Compute embeddings for ALL records
             embeddings = encoder.encode(texts, 
                                         batch_size=transformer_batch_size,
                                         normalize_embeddings=True,
@@ -116,10 +109,29 @@ def main():
             embeddings_df = pd.DataFrame(embeddings)
             os.makedirs(os.path.dirname(embedding_path), exist_ok=True)
             embeddings_df.to_parquet(embedding_path)
-            print(f"Embeddings saved to {embedding_path}")
+            print(f"Embeddings for all records saved to {embedding_path}")
             
-            X = embeddings_df
+            X_full = embeddings_df
             skip_feature_extraction = True
+    
+    # Now apply oa_status filter if specified (for synergy benchmark only)
+    if benchmark == "synergy" and oa_status is not None:
+        oa_filter = oa_status == "True"
+        # Ensure is_open_access is boolean type
+        df_full["is_open_access"] = df_full["is_open_access"].astype(bool)
+        # Get indices of filtered records
+        filter_mask = df_full["is_open_access"] == oa_filter
+        df = df_full[filter_mask].reset_index(drop=True)
+        # Select corresponding embeddings/features
+        X = X_full[filter_mask].reset_index(drop=True)
+        print(f"Filtered to {len(df)} records with is_open_access={oa_filter}")
+    else:
+        df = df_full
+        X = X_full
+    
+    Y = df["label_included"].fillna(0)
+    ids = df["openalex_id"]
+    total_n_records = len(df)
     
     # Set up the active learning cycle
     alc = [
