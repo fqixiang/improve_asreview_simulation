@@ -115,6 +115,10 @@ def main():
         if not match_condition.any():
             # append the new summary table to the existing one
             print("Summary table already exists, appending new results to it.")
+            # Ensure consistent dtypes before concatenation
+            for col in summary_df.columns:
+                if col in summary_df_existing.columns:
+                    summary_df[col] = summary_df[col].astype(summary_df_existing[col].dtype)
             summary_df_existing = pd.concat([summary_df_existing, summary_df], ignore_index=True)
         else:
             # if the combination already exists in the summary table, update the existing row with the new values

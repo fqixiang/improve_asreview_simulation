@@ -150,6 +150,35 @@ def main():
     ids = df["openalex_id"]
     total_n_records = len(df)
     
+    # Check if there are any inclusions after filtering
+    n_inclusions = int(Y.sum())
+    n_exclusions = int((Y == 0).sum())
+    n_priors = n_pos_priors + n_neg_priors
+    
+    if total_n_records <= n_priors:
+        print(f"ERROR: Not enough records for simulation!")
+        print(f"Dataset has {total_n_records} records, but need more than {n_priors} (n_pos_priors={n_pos_priors} + n_neg_priors={n_neg_priors})")
+        print(f"A simulation requires at least {n_priors + 1} records to have priors plus at least one record to screen.")
+        return
+    
+    if n_inclusions == 0:
+        print(f"ERROR: No inclusions found after filtering!")
+        print(f"Dataset has {total_n_records} records (0 inclusions, {n_exclusions} exclusions)")
+        print(f"Cannot run simulation without any positive labels.")
+        return
+    
+    if n_inclusions < n_pos_priors:
+        print(f"ERROR: Not enough inclusions for the requested priors!")
+        print(f"Found {n_inclusions} inclusions, but need {n_pos_priors} positive priors")
+        return
+    
+    if n_exclusions < n_neg_priors:
+        print(f"ERROR: Not enough exclusions for the requested priors!")
+        print(f"Found {n_exclusions} exclusions, but need {n_neg_priors} negative priors")
+        return
+    
+    print(f"Dataset: {total_n_records} records ({n_inclusions} inclusions, {n_exclusions} exclusions)")
+    
     # Set up the active learning cycle
     alc = [
         ActiveLearningCycle(
