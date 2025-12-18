@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--model", type=str, default="elas_u4", help="The ASReview model to use")
     parser.add_argument("--n_random_cycles", type=int, default=10, help="The number of random cycles to run")
     parser.add_argument("--transformer_batch_size", type=int, default=32, help="Batch size for transformer encoding")
+    parser.add_argument("--oa_status", type=str, default=None, choices=[None, "True", "False"], help="Filter by open access status (synergy only): True, False, or None for no filter")
     args = parser.parse_args()
     benchmark = args.benchmark
     dataset = args.dataset
@@ -28,9 +29,18 @@ def main():
     model = args.model
     n_random_cycles = args.n_random_cycles
     transformer_batch_size = args.transformer_batch_size
+    oa_status = args.oa_status
+
+    # Determine OA status folder name
+    if oa_status is None:
+        oa_folder = "all"
+    elif oa_status == "True":
+        oa_folder = "open"
+    else:  # "False"
+        oa_folder = "closed"
 
     # Check if simulation is already done
-    save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)"
+    save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{oa_folder}"
     df_results_path = f"{save_folder_path}/{model}_results.csv"
     if os.path.exists(df_results_path):
         print(f"Simulation already done. Results saved in {df_results_path}")
@@ -44,6 +54,13 @@ def main():
     if benchmark == "synergy":
         file_path = f"./data/{benchmark}/{dataset}/labels.csv"
         df = pd.read_csv(file_path)
+        # Filter by open access status if specified
+        if oa_status is not None:
+            oa_filter = oa_status == "True"
+            # Ensure is_open_access is boolean type
+            df["is_open_access"] = df["is_open_access"].astype(bool)
+            df = df[df["is_open_access"] == oa_filter].reset_index(drop=True)
+            print(f"Filtered to {len(df)} records with is_open_access={oa_filter}")
     else:  # improve
         file_path = f"./data/{benchmark}/{dataset}/{dataset}.xlsx"
         df = pd.read_excel(file_path)
