@@ -1,6 +1,6 @@
 # ASReview Simulation
 
-This repository contains scripts and resources for running simulations and analyses using the ASReview library. It supports two benchmarks: **IMPROVE** and **SYNERGY**, with flexible filtering options for open access status and abstract length.
+This repository contains scripts and resources for running simulations and analyses using the ASReview library. It supports two benchmarks: [**IMPROVE**](https://doi.org/10.1016/j.csbj.2024.10.026) and **SYNERGY**, with flexible filtering options for open access status and abstract length.
 
 
 ## Setup
@@ -194,6 +194,9 @@ Aggregated statistics with columns:
 - matplotlib
 - seaborn
 - pyarrow (for parquet support)
+
+## Grant
+The IMPROVE project is an Innovative Health Initiative project that has been granted by the European Commission under Grant agreement ID:101132847.
 
 ## Contact
 For questions or issues, please contact the project maintainer.
