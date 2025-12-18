@@ -16,7 +16,7 @@ def main():
     parser.add_argument("--n_pos_priors", type=int, default=1, help="The number of positive priors")
     parser.add_argument("--n_neg_priors", type=int, default=1, help="The number of negative priors")
     parser.add_argument("--oa_status", type=str, default=None, choices=[None, "True", "False"], help="Filter by open access status (synergy only): True, False, or None for no filter")
-    parser.add_argument("--abstract_min_length", type=int, default=100, help="Minimum abstract length (words for space-separated languages, characters otherwise)")
+    parser.add_argument("--abstract_min_length", type=int, default=None, help="Minimum abstract length (words for space-separated languages, characters otherwise)")
 
     args = parser.parse_args()
     benchmark = args.benchmark
@@ -37,7 +37,8 @@ def main():
 
     # Read the CSV file
     save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{oa_folder}"
-    df = pd.read_csv(f"{save_folder_path}/{model}_abs{abstract_min_length}_results.csv")
+    abs_suffix = f"abs{abstract_min_length}" if abstract_min_length is not None else "abs_all"
+    df = pd.read_csv(f"{save_folder_path}/{model}_{abs_suffix}_results.csv")
 
     # define some variables 
     total_n_records = int(df["total_n_records"].iloc[0])
@@ -86,33 +87,42 @@ def main():
     std_loss = np.std(losses_ls)
     std_ndcg = np.std(ndcgs_ls)
 
-    # make a table with the following columns:
-    # dataset, model, n_iterations, average loss, std loss, average ndcg, std ndcg
+    # make a table with the following columns
     summary_df = pd.DataFrame({
         "dataset": [dataset],
         "model": [model],
-        "n_iterations": [n_iterations],
-        "average_loss": [ave_loss],
-        "std_loss": [std_loss],
-        "average_ndcg": [ave_ndcg],
-        "std_ndcg": [std_ndcg]
+        "oa_status": [oa_status if oa_status is not None else "all"],
+        "min_abstract_words": [abstract_min_length],
+        "total_n_records": [total_n_records],
+        "total_n_inclusions": [total_n_relevant_records],
+        "loss_mean": [ave_loss],
+        "loss_sd": [std_loss],
+        "ndcg_mean": [ave_ndcg],
+        "ndcg_sd": [std_ndcg],
+        "n_seeds": [n_iterations]
     })
     # check if summary table already exists
     if os.path.exists(f"./results/simulation_summary.csv"):
         # read the existing summary table
         summary_df_existing = pd.read_csv(f"./results/simulation_summary.csv")
-        # append the new summary table to the existing one if the dataset and model are not already in the summary table
-        if not ((summary_df_existing["dataset"] == dataset) & (summary_df_existing["model"] == model)).any():
+        # append the new summary table to the existing one if the dataset, model, oa_status, and min_abstract_words are not already in the summary table
+        match_condition = (
+            (summary_df_existing["dataset"] == dataset) & 
+            (summary_df_existing["model"] == model) &
+            (summary_df_existing["oa_status"] == (oa_status if oa_status is not None else "all")) &
+            (summary_df_existing["min_abstract_words"] == abstract_min_length)
+        )
+        if not match_condition.any():
             # append the new summary table to the existing one
             print("Summary table already exists, appending new results to it.")
             summary_df_existing = pd.concat([summary_df_existing, summary_df], ignore_index=True)
         else:
-            # if the dataset and model are already in the summary table, update the existing row with the new values
+            # if the combination already exists in the summary table, update the existing row with the new values
             print("Summary table already exists, updating existing results.")
             summary_df_existing.loc[
-                (summary_df_existing["dataset"] == dataset) & (summary_df_existing["model"] == model),
-                ["n_iterations", "average_loss", "std_loss", "average_ndcg", "std_ndcg"]
-            ] = [n_iterations, ave_loss, std_loss, ave_ndcg, std_ndcg]
+                match_condition,
+                ["total_n_records", "total_n_inclusions", "loss_mean", "loss_sd", "ndcg_mean", "ndcg_sd", "n_seeds"]
+            ] = [total_n_records, total_n_relevant_records, ave_loss, std_loss, ave_ndcg, std_ndcg, n_iterations]
         # save the updated summary table to a csv file
         print("Saving updated summary table to simulation_summary.csv")
         summary_df_existing.to_csv(f"./results/simulation_summary.csv", index=False)
@@ -131,19 +141,20 @@ def main():
     plt.legend().remove()
     # title text
     title = f"Recall vs Proportion of Records Screened for '{dataset}'"
-    subtitle = f"""With model '{model}', {n_pos_priors} positive prior(s) and {n_neg_priors} negative prior(s),
-    {len(seeds)} random sampling cycles (corresponding to differently colored lines).
-    All {total_n_relevant_records} remaining relevant records retrieved after screening ~{ave_n_records_needed_for_full_recall} records.
-    Average loss: {ave_loss:.3f}; Average NDCG: {ave_ndcg:.3f}"""
+    oa_status_display = oa_status if oa_status is not None else "all"
+    abstract_min_display = abstract_min_length if abstract_min_length is not None else "all"
+    subtitle = f"""Model: {model} | OA Status: {oa_status_display} | Min Abstract Length: {abstract_min_display}
+    {n_pos_priors} positive prior(s), {n_neg_priors} negative prior(s), {len(seeds)} random cycles (differently colored lines)
+    All {total_n_relevant_records} inclusions retrieved after ~{ave_n_records_needed_for_full_recall} records screened
+    Loss: {ave_loss:.3f} ± {std_loss:.3f} | NDCG: {ave_ndcg:.3f} ± {std_ndcg:.3f}"""
     plt.suptitle(title, fontsize=14, fontweight='bold')
     plt.title(subtitle, fontsize=10)
     # set plot size
     plt.gcf().set_size_inches(10, 9)
 
     # Save plot to the same folder as results
-    plt.savefig(f"{save_folder_path}/{model}_abs{abstract_min_length}_recall_vs_proportion.png")
+    plt.savefig(f"{save_folder_path}/{model}_{abs_suffix}_recall_vs_proportion.png")
     # plt.show()
-
 
 if __name__ == "__main__":
     main()

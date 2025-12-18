@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--n_random_cycles", type=int, default=10, help="The number of random cycles to run")
     parser.add_argument("--transformer_batch_size", type=int, default=32, help="Batch size for transformer encoding")
     parser.add_argument("--oa_status", type=str, default=None, choices=[None, "True", "False"], help="Filter by open access status (synergy only): True, False, or None for no filter")
-    parser.add_argument("--abstract_min_length", type=int, default=100, help="Minimum abstract length (words for space-separated languages, characters otherwise)")
+    parser.add_argument("--abstract_min_length", type=int, default=None, help="Minimum abstract length (words for space-separated languages, characters otherwise)")
     args = parser.parse_args()
     benchmark = args.benchmark
     dataset = args.dataset
@@ -43,7 +43,8 @@ def main():
 
     # Check if simulation is already done
     save_folder_path = f"./results/{benchmark}/{dataset}/{n_pos_priors}_pos_prior(s)/{n_neg_priors}_neg_prior(s)/{oa_folder}"
-    df_results_path = f"{save_folder_path}/{model}_abs{abstract_min_length}_results.csv"
+    abs_suffix = f"abs{abstract_min_length}" if abstract_min_length is not None else "abs_all"
+    df_results_path = f"{save_folder_path}/{model}_{abs_suffix}_results.csv"
     if os.path.exists(df_results_path):
         print(f"Simulation already done. Results saved in {df_results_path}")
         return
@@ -117,8 +118,13 @@ def main():
             skip_feature_extraction = True
     
     # Apply filters: abstract length and oa_status
-    df_full["_abstract_length"] = df_full.apply(get_abstract_length, axis=1)
-    filter_mask = df_full["_abstract_length"] >= abstract_min_length
+    # Start with all records included
+    filter_mask = pd.Series([True] * len(df_full), index=df_full.index)
+    
+    # Apply abstract length filter if specified
+    if abstract_min_length is not None:
+        df_full["_abstract_length"] = df_full.apply(get_abstract_length, axis=1)
+        filter_mask = filter_mask & (df_full["_abstract_length"] >= abstract_min_length)
     
     # Apply oa_status filter if specified (for synergy benchmark only)
     if benchmark == "synergy" and oa_status is not None:
@@ -134,8 +140,9 @@ def main():
     X = X_full[filter_mask].reset_index(drop=True)
     filtered_count = len(df)
     
-    # Clean up temporary column
-    df = df.drop(columns=["_abstract_length"])
+    # Clean up temporary column if it exists
+    if "_abstract_length" in df.columns:
+        df = df.drop(columns=["_abstract_length"])
     
     print(f"Filtered from {initial_count} to {filtered_count} records (abstract_min_length={abstract_min_length}, oa_status={oa_status})")
     
